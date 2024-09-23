@@ -28,25 +28,16 @@ powerManager_Model.parameterLoadOnReboot = false -- Status if parameter dataset 
 local setPowerManager_Model_Handle = require('Configuration/PowerManager/PowerManager_Controller')
 setPowerManager_Model_Handle(powerManager_Model)
 
-powerManager_Model.moduleActive = true -- Features provided by device (APIs available)
 powerManager_Model.helperFuncs = require('Configuration/PowerManager/helper/funcs') -- General helper functions
 powerManager_Model.parameters = {} -- Parameters to save persistently
 powerManager_Model.status = {} -- Holding curent status of connector ports
 powerManager_Model.handles = {} -- Handles of the power connectors
 powerManager_Model.interfaceList = '' -- List of power connectors
 
--- Check if needed CROWN is available on device
-if Connector == nil then
-  powerManager_Model.moduleActive = false
-  _G.logger:warning(nameOfModule .. ': CROWN is not available. Module is not supported...')
-else
-  if Connector.Power == nil then
-    powerManager_Model.moduleActive = false
-    _G.logger:warning(nameOfModule .. ': CROWN is not available. Module is not supported...')
-  end
-end
+powerManager_Model.styleForUI = 'None' -- Optional parameter to set UI style
+powerManager_Model.version = Engine.getCurrentAppVersion() -- Version of module
 
-if powerManager_Model.moduleActive then
+if _G.availableAPIs.specific then
   local powerConnectors = Engine.getEnumValues("PowerConnectors") -- Get availbale connectors
   for i = 1, #powerConnectors do
     local name = powerConnectors[i]
@@ -68,8 +59,15 @@ powerManager_Model.interfaceList = powerManager_Model.helperFuncs.createJsonList
 --**********************Start Function Scope *******************************
 --**************************************************************************
 
+--- Function to react on UI style change
+local function handleOnStyleChanged(theme)
+  powerManager_Model.styleForUI = theme
+  Script.notifyEvent("PowerManager_OnNewStatusCSKStyle", powerManager_Model.styleForUI)
+end
+Script.register('CSK_PersistentData.OnNewStatusCSKStyle', handleOnStyleChanged)
+
 local function changeStatusOfPort(portName)
-  _G.logger:info(nameOfModule .. ": Change status of port " .. portName)
+  _G.logger:fine(nameOfModule .. ": Change status of port " .. portName)
 
   for key, _ in pairs(powerManager_Model.parameters) do
     if key == portName then
@@ -111,7 +109,7 @@ Script.serveFunction("CSK_PowerManager.getCurrentPortStatus", getCurrentPortStat
 powerManager_Model.getCurrentPortStatus = getCurrentPortStatus
 
 local function setAllStatus()
-  _G.logger:info(nameOfModule .. ": Set new status.")
+  _G.logger:info(nameOfModule .. ": Set new power status.")
 
   for key, _ in pairs(powerManager_Model.status) do
     powerManager_Model.status[key] = tostring(powerManager_Model.parameters[key])

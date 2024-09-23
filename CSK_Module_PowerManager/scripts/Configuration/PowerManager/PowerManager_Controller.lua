@@ -22,12 +22,15 @@ local powerManager_Model
 
 -- ************************ UI Events Start ********************************
 
+Script.serveEvent('CSK_PowerManager.OnNewStatusModuleVersion', 'PowerManager_OnNewStatusModuleVersion')
+Script.serveEvent('CSK_PowerManager.OnNewStatusCSKStyle', 'PowerManager_OnNewStatusCSKStyle')
+Script.serveEvent('CSK_PowerManager.OnNewStatusModuleIsActive', 'PowerManager_OnNewStatusModuleIsActive')
+
 Script.serveEvent("CSK_PowerManager.OnUserLevelOperatorActive", "PowerManager_OnUserLevelOperatorActive")
 Script.serveEvent("CSK_PowerManager.OnUserLevelMaintenanceActive", "PowerManager_OnUserLevelMaintenanceActive")
 Script.serveEvent("CSK_PowerManager.OnUserLevelServiceActive", "PowerManager_OnUserLevelServiceActive")
 Script.serveEvent("CSK_PowerManager.OnUserLevelAdminActive", "PowerManager_OnUserLevelAdminActive")
 
-Script.serveEvent('CSK_PowerManager.OnNewStatusModuleIsActive', 'PowerManager_OnNewStatusModuleIsActive')
 Script.serveEvent("CSK_PowerManager.OnNewInterfaceList", "PowerManager_OnNewInterfaceList")
 Script.serveEvent("CSK_PowerManager.OnNewStatusLoadParameterOnReboot", "PowerManager_OnNewStatusLoadParameterOnReboot")
 Script.serveEvent("CSK_PowerManager.OnPersistentDataModuleAvailable", "PowerManager_OnPersistentDataModuleAvailable")
@@ -100,7 +103,10 @@ local function handleOnExpiredTmrPowerManager()
 
   updateUserLevel()
 
-  Script.notifyEvent("PowerManager_OnNewStatusModuleIsActive", powerManager_Model.moduleActive)
+  Script.notifyEvent("PowerManager_OnNewStatusModuleVersion", 'v' .. powerManager_Model.version)
+  Script.notifyEvent("PowerManager_OnNewStatusCSKStyle", powerManager_Model.styleForUI)
+  Script.notifyEvent("PowerManager_OnNewStatusModuleIsActive", _G.availableAPIs.default and _G.availableAPIs.specific)
+
   Script.notifyEvent("PowerManager_OnNewInterfaceList", powerManager_Model.interfaceList)
   Script.notifyEvent("PowerManager_OnPersistentDataModuleAvailable", powerManager_Model.persistentModuleAvailable)
   Script.notifyEvent("PowerManager_OnNewStatusLoadParameterOnReboot", powerManager_Model.parameterLoadOnReboot)
@@ -138,12 +144,22 @@ local function selectInterface(selection)
       end
     end
   end
-  _G.logger:info(nameOfModule .. ": Selected PowerConnector = " .. tostring(selectedInterfaceNo))
+  _G.logger:fine(nameOfModule .. ": Selected PowerConnector = " .. tostring(selectedInterfaceNo))
   if selectedInterfaceNo ~= '' then
     powerManager_Model.changeStatusOfPort(selectedInterfaceNo)
   end
 end
 Script.serveFunction("CSK_PowerManager.selectInterface", selectInterface)
+
+local function getStatusModuleActive()
+  return _G.availableAPIs.default and _G.availableAPIs.specific
+end
+Script.serveFunction('CSK_PowerManager.getStatusModuleActive', getStatusModuleActive)
+
+local function getParameters()
+  return powerManager_Model.helperFuncs.json.encode(powerManager_Model.parameters)
+end
+Script.serveFunction('CSK_PowerManager.getParameters', getParameters)
 
 -- *****************************************************************
 -- Following functions can be adapted for CSK_PersistentData module usage
@@ -151,16 +167,18 @@ Script.serveFunction("CSK_PowerManager.selectInterface", selectInterface)
 
 local function setParameterName(name)
   powerManager_Model.parametersName = name
-  _G.logger:info(nameOfModule .. ": Set new parameter name: " .. tostring(name))
+  _G.logger:fine(nameOfModule .. ": Set new parameter name: " .. tostring(name))
 end
 Script.serveFunction("CSK_PowerManager.setParameterName", setParameterName)
 
-local function sendParameters()
+local function sendParameters(noDataSave)
   if powerManager_Model.persistentModuleAvailable then
     CSK_PersistentData.addParameter(powerManager_Model.helperFuncs.convertTable2Container(powerManager_Model.parameters), powerManager_Model.parametersName)
     CSK_PersistentData.setModuleParameterName(nameOfModule, powerManager_Model.parametersName, powerManager_Model.parameterLoadOnReboot)
-    _G.logger:info(nameOfModule .. ": Send PowerManager parameters with name '" .. powerManager_Model.parametersName .. "' to CSK_PersistentData module.")
-    CSK_PersistentData.saveData()
+    _G.logger:fine(nameOfModule .. ": Send PowerManager parameters with name '" .. powerManager_Model.parametersName .. "' to CSK_PersistentData module.")
+    if not noDataSave then
+      CSK_PersistentData.saveData()
+    end
   else
     _G.logger:warning(nameOfModule .. ": CSK_PersistentData module not available.")
   end
@@ -174,26 +192,30 @@ local function loadParameters()
       _G.logger:info(nameOfModule .. ": Loaded parameters from CSK_PersistentData module.")
       powerManager_Model.parameters = powerManager_Model.helperFuncs.convertContainer2Table(data)
       powerManager_Model.setAllStatus()
+      return true
     else
       _G.logger:warning(nameOfModule .. ": Loading parameters from CSK_PersistentData module did not work.")
+      return false
     end
   else
     _G.logger:warning(nameOfModule .. ": CSK_PersistentData module not available.")
+    return false
   end
 end
 Script.serveFunction("CSK_PowerManager.loadParameters", loadParameters)
 
 local function setLoadOnReboot(status)
   powerManager_Model.parameterLoadOnReboot = status
-  _G.logger:info(nameOfModule .. ": Set new status to load setting on reboot: " .. tostring(status))
+  _G.logger:fine(nameOfModule .. ": Set new status to load setting on reboot: " .. tostring(status))
+  Script.notifyEvent("PowerManager_OnNewStatusLoadParameterOnReboot", status)
 end
 Script.serveFunction("CSK_PowerManager.setLoadOnReboot", setLoadOnReboot)
 
 --- Function to react on initial load of persistent parameters
 local function handleOnInitialDataLoaded()
 
-  _G.logger:info(nameOfModule .. ': Try to initially load parameter from CSK_PersistentData module.')
-  if powerManager_Model.moduleActive then
+  if _G.availableAPIs.default and _G.availableAPIs.specific then
+    _G.logger:fine(nameOfModule .. ': Try to initially load parameter from CSK_PersistentData module.')
     if string.sub(CSK_PersistentData.getVersion(), 1, 1) == '1' then
 
       _G.logger:warning(nameOfModule .. ': CSK_PersistentData module is too old and will not work. Please update CSK_PersistentData module.')
@@ -216,6 +238,19 @@ local function handleOnInitialDataLoaded()
   end
 end
 Script.register("CSK_PersistentData.OnInitialDataLoaded", handleOnInitialDataLoaded)
+
+local function resetModule()
+  if _G.availableAPIs.default and _G.availableAPIs.specific then
+    for key, _ in pairs(powerManager_Model.parameters) do
+      powerManager_Model.parameters[key] = false
+      powerManager_Model.status[key] = powerManager_Model.helperFuncs.status.off
+    end
+    powerManager_Model.setAllStatus()
+    pageCalled()
+  end
+end
+Script.serveFunction('CSK_PowerManager.resetModule', resetModule)
+Script.register("CSK_PersistentData.OnResetAllModules", resetModule)
 
 -- *************************************************
 -- END of functions for CSK_PersistentData module usage
