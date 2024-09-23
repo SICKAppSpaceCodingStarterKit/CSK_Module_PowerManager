@@ -32,7 +32,12 @@ funcs.status = status
 local function createJsonList(contentA, contentB)
   local orderedTable = {}
   local connectorList = {}
-  if contentA == nil then
+  local entries = false
+  for key, value in pairs(contentA) do
+    entries = true
+    break
+  end
+  if contentA == nil or entries == false then
     connectorList = {{PowerConnector = '-', Status = '-'},}
   else
 

@@ -44,6 +44,10 @@ _G.logHandle:applyConfig()
 -- Check this script regarding PowerManager_Model parameters and functions
 _G.powerManager_Model = require('Configuration/PowerManager/PowerManager_Model')
 
+if _G.availableAPIs.default == false or _G.availableAPIs.specific == false then
+  _G.logger:warning("CSK_PowerManager: Relevant CROWN(s) not available on device. Module is not supported...")
+end
+
 --**************************************************************************
 --**********************End Global Scope ***********************************
 --**************************************************************************

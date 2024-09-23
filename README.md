@@ -2,7 +2,7 @@
 
 Module to setup power connectors of the device.  
 
-![](https://github.com/SICKAppSpaceCodingStarterKit/CSK_Module_PowerManager/blob/main/docu/media/UI_Screenshot.png)
+![](./docu/media/UI_Screenshot.png)
 
 ## How to Run
 
@@ -13,7 +13,11 @@ For further information check out the [documentation](https://raw.githack.com/SI
 
 Tested on  
 
-1. SIM1012        - Firmware 2.2.0
+|Device|Firmware|Module version|
+|--|--|--|
+|SICK AppEngine|v1.7.0|v2.6.0|
+|SIM1012|v2.4.2|v2.6.0|
+|SIM1012|v2.2.0|<v2.6.0|
 
 This module is part of the SICK AppSpace Coding Starter Kit developing approach.  
 It is programmed in an object oriented way. Some of these modules use kind of "classes" in Lua to make it possible to reuse code / classes in other projects.  
@@ -22,4 +26,4 @@ Please check the [documentation](https://github.com/SICKAppSpaceCodingStarterKit
 
 ## Topics
 
-Coding Starter Kit, CSK, Module, SICK-AppSpace, Power, SIM, Connector,
+Coding Starter Kit, CSK, Module, SICK-AppSpace, Power, SIM, Connector
