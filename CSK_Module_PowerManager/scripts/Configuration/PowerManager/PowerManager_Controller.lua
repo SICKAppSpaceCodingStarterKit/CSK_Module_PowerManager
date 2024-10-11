@@ -103,7 +103,7 @@ local function handleOnExpiredTmrPowerManager()
 
   updateUserLevel()
 
-  Script.notifyEvent("PowerManager_OnNewStatusModuleVersion", powerManager_Model.version)
+  Script.notifyEvent("PowerManager_OnNewStatusModuleVersion", 'v' .. powerManager_Model.version)
   Script.notifyEvent("PowerManager_OnNewStatusCSKStyle", powerManager_Model.styleForUI)
   Script.notifyEvent("PowerManager_OnNewStatusModuleIsActive", _G.availableAPIs.default and _G.availableAPIs.specific)
 
